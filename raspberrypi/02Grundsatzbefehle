@@ -1,0 +1,43 @@
+#Zeit einstellen
+sudo date --set '2018-04-19 09:30:00'
+
+#Mosquitto & Mosquitto Client installieren
+sudo apt install mosquitto mosquitto-clients
+
+#Autostart einstellen
+sudo systemctl enable mosquitto // oder disable
+
+#Mosquitto-Dienst starten
+sudo systemctl start mosquitto // oder stop
+
+#Status überprüfen
+sudo systemctl status mosquitto
+
+#Dienst neustarten
+sudo systemctl restart mosquitto
+
+#Subcriber starten mit Topic "Test"
+mosquitto_sub -t test
+
+#Publisher mit Topic "Test"
+mosquitto_pub -t test -m "Hallo Welt"
+
+
+###Authentifizierung erstellen###
+sudo mosquitto_passwd -c /etc/mosquitto/credentials mqttuser
+->Passwort vergeben<-
+
+#Config zur Authentifizierung anpassen
+sudo nano /etc/mosquitto/conf.d/local.conf
+--listener 1883   // Port
+--allow_anonymous false
+--password_file /etc/mosquitto/credentials
+-> in die Datei eintragen
+--> danach den Dienst neustarten
+
+
+#Subscriber mit Authentifizierung starten
+mosquitto_sub -t "#" -v -u USER -P PASSWORD  //# = Topic-Name
+
+#Publishing über Authentifizierung
+mosquitto_pub -t test -m "Hallo Welt" -u user -P Password
