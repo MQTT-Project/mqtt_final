@@ -1,0 +1,20 @@
+void setup() {
+  pinMode(4, OUTPUT); //D2 Grün
+  pinMode(5, OUTPUT); //D1 Gelb
+  pinMode(14,OUTPUT); //D5 Rot
+}
+
+void loop() {
+  digitalWrite(5, HIGH);  // turn the LED on (HIGH is the voltage level)
+  delay(3000);                      // wait for a second
+  digitalWrite(5, LOW);   // turn the LED off by making the voltage LOW
+  delay(3000);       
+  digitalWrite(4, HIGH);  // turn the LED on (HIGH is the voltage level)
+  delay(1000);                      // wait for a second
+  digitalWrite(4, LOW);   // turn the LED off by making the voltage LOW
+  delay(1000);    
+  digitalWrite(14, HIGH);  // turn the LED on (HIGH is the voltage level)
+  delay(5000);                      // wait for a second
+  digitalWrite(14, LOW);   // turn the LED off by making the voltage LOW
+  delay(5000);                   // wait for a second
+}

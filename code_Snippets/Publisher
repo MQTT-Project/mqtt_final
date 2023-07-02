@@ -1,0 +1,123 @@
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BMP085.h>
+
+// Netzwerkeinstellungen
+const char* ssid = "H150-WLAN";
+const char* password = "H150aR5!";
+const char* mqttServer = "10.2.5.176";
+const int mqttPort = 1883;
+const char* mqttUser = "mqttuser";
+const char* mqttPassword = "mqtt";
+const char* mqttTopic = "test";
+
+
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Neue MQTT-Nachricht empfangen auf Topic: ");
+  Serial.println(topic);
+
+  // Konvertiere den Payload in einen String
+  String message = "";
+  for (int i = 0; i < length; i++) {
+    message += (char)payload[i];
+  }
+
+  Serial.print("Nachricht: ");
+  Serial.println(message);
+
+  // Weitere Logik mit der empfangenen Nachricht hier...
+
+  // Beispiel: Überprüfe, ob die Nachricht ein bestimmtes Muster enthält
+  if (message.indexOf("MUSTER") != -1) {
+    // Tue etwas, wenn das Muster in der Nachricht gefunden wurde
+  }
+}
+// Verbindung zum WLAN herstellen
+
+
+Adafruit_BMP085 bmp;  
+
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  /*pinMode(greenPin, OUTPUT);
+  pinMode(yellowPin, OUTPUT);
+  pinMode(redPin, OUTPUT);
+
+  digitalWrite(greenPin, LOW);
+  digitalWrite(yellowPin, LOW);
+  digitalWrite(redPin, LOW);*/
+
+  // WLAN-Verbindung herstellen
+  Serial.print("Verbinde mit ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("Verbunden!");
+  Serial.println(WiFi.localIP());
+
+
+// MQTT-Verbindung herstellen
+  mqttClient.setServer(mqttServer, mqttPort);
+  mqttClient.setCallback(callback);
+
+  while (!mqttClient.connected()) {
+    if (mqttClient.connect("ESP8266", mqttUser, mqttPassword)) {
+      Serial.println("Verbindung zum MQTT-Broker hergestellt!");
+      mqttClient.subscribe(mqttTopic);
+    } else {
+      Serial.print("Verbindung zum MQTT-Broker fehlgeschlagen. Fehlercode=");
+      Serial.println(mqttClient.state());
+      delay(2000);
+    }
+  }
+
+
+if (!bmp.begin()) {
+    Serial.println("Fehler beim Initialisieren des BMP180-Sensors");
+    while (1);
+  }
+}
+
+// Hauptschleife
+void loop() {
+  if (!mqttClient.connected()) {
+  reconnect();
+  }
+  //Variablen für die Temperatur und für den Luftdruck
+  float temperature = bmp.readTemperature();
+  //float pressure = bmp.readPressure() / 100.0; // Umwandlung in hPa
+
+  // MQTT-Nachricht senden - Temperatur
+  char temperatureString[10];
+  sprintf(temperatureString, "%.2f", temperature);
+  mqttClient.publish("test", temperatureString);
+
+  
+  delay(5000); // Warte 5 Sekunden vor dem Senden der nächsten Nachricht
+}
+void reconnect() {
+  while (!mqttClient.connected()) {
+    Serial.println("Verbindung zum MQTT-Broker wird wiederhergestellt...");
+    if (mqttClient.connect("ESP8266Client", mqttUser, mqttPassword)) {
+      Serial.println("Verbindung zum MQTT-Broker hergestellt!");
+    } else {
+      Serial.print("Verbindung zum MQTT-Broker fehlgeschlagen. Fehlercode=");
+      Serial.println(mqttClient.state());
+      delay(2000);
+    }
+  }
+}
+
+

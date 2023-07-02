@@ -1,0 +1,153 @@
+#include <WiFi.h>
+#include <PubSubClient.h>
+
+// Netzwerkeinstellungen
+const char* ssid = "H150-WLAN";
+const char* password = "H150aR5!";
+const char* mqttServer = "10.2.5.176";
+const int mqttPort = 1883;
+const char* mqttUser = "mqttuser";
+const char* mqttPassword = "mqtt";
+const char* mqttTopic = "test";
+
+WiFiClient wifiClient;
+PubSubClient mqttClient(wifiClient);
+
+double globalValue;
+
+void callback(char* topic, byte* payload, unsigned int length) {
+  // Den Byte-Array in einen String umwandeln
+  String payloadString = "";
+  for (int i = 0; i < length; i++) {
+    payloadString += (char)payload[i];
+  }
+  // Den String in einen Integer umwandeln
+  double intValue = payloadString.toDouble();
+
+  globalValue = intValue;
+
+  // Den Integer-Wert auf der seriellen Schnittstelle ausgeben
+  Serial.print("Empfangener Wert: ");
+  Serial.println(intValue);
+}
+
+// Zustände der State Machine
+typedef enum State {
+  STATE_INIT,
+  STATE_CONNECT_WIFI,
+  STATE_CONNECT_MQTT,
+  STATE_SUBSCRIBE,
+  STATE_RUN,
+  STATE_DISCONNECT
+} State;
+
+
+
+const int greenPin = 5;  // Pin für grüne LED  G5
+const int yellowPin = 17; // Pin für gelbe LED G17
+const int redPin = 16;    // Pin für rote LED G16
+
+/*
+State VerbindungsTest(State Aktuell)
+{
+  if (!mqttClient.connected() && Aktuell != STATE_DISCONNECT && Aktuell != STATE_CONNECT_WIFI) {
+    return STATE_DISCONNECT;
+    }
+  else {
+    return Aktuell;
+   }
+}
+*/
+State currentState;
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  pinMode(greenPin, OUTPUT);
+  pinMode(yellowPin, OUTPUT);
+  pinMode(redPin, OUTPUT);
+
+  currentState = STATE_INIT;
+}
+
+void loop() {
+  switch (currentState) {
+    case STATE_INIT:
+      // Initialisierung
+      Serial.println("Initialisierung...");
+      WiFi.begin(ssid, password);
+      currentState = STATE_CONNECT_WIFI;
+      break;
+
+    case STATE_CONNECT_WIFI:
+      // WLAN-Verbindung herstellen
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("WLAN-Verbindung hergestellt!");
+        mqttClient.setServer(mqttServer, mqttPort);
+        mqttClient.setCallback(callback);
+        currentState = STATE_CONNECT_MQTT;
+      }
+      break;
+
+    case STATE_CONNECT_MQTT:
+      // MQTT-Verbindung herstellen
+      if (mqttClient.connect("ESP32", mqttUser, mqttPassword)) {
+        Serial.println("Verbindung zum MQTT-Broker hergestellt!");
+        currentState = STATE_SUBSCRIBE;
+      }
+      break;
+
+    case STATE_SUBSCRIBE:
+      // MQTT-Topic abonnieren
+      mqttClient.subscribe(mqttTopic);
+      currentState = STATE_RUN;
+      break;
+
+    case STATE_RUN:
+      // Zustand für die Ausführung
+      mqttClient.loop();
+      // LED-Farben je nach Temperatur steuern
+      if (globalValue <= 22.9) {
+        digitalWrite(greenPin, HIGH);
+        digitalWrite(yellowPin, LOW);
+        digitalWrite(redPin, LOW);
+      } else if (globalValue >= 23 && globalValue <= 25.9) {
+        digitalWrite(greenPin, LOW);
+        digitalWrite(yellowPin, HIGH);
+        digitalWrite(redPin, LOW);
+      } else if (globalValue >= 26) {
+        digitalWrite(greenPin, LOW);
+        digitalWrite(yellowPin, LOW);
+        digitalWrite(redPin, HIGH);
+      }
+	  
+		if (!mqttClient.connected() && currentState != STATE_DISCONNECT && currentState != STATE_CONNECT_WIFI) {
+			currentState = STATE_DISCONNECT;
+			}
+			else
+		currentState = STATE_RUN;
+
+      //currentState = VerbindungsTest(STATE_RUN);
+  
+      break;
+
+    case STATE_DISCONNECT:
+      // Verbindung trennen
+      mqttClient.disconnect();
+      WiFi.disconnect(true);
+      Serial.println("Verbindung getrennt!");
+      currentState = STATE_CONNECT_WIFI; // Zustand für erneute Verbindung setzen
+      break;
+  }
+
+  // Zustandswechsel überwachen
+  //if (currentState != STATE_RUN && currentState != STATE_DISCONNECT) {
+  //  delay(10000); // 1 Sekunde warten, bevor zum nächsten Zustand übergegangen wird
+  //}
+
+  // Überprüfen, ob der MQTT-Client getrennt ist und zur STATE_DISCONNECT wechseln
+ // if (!mqttClient.connected() && currentState != STATE_DISCONNECT && currentState != STATE_CONNECT_WIFI) {
+ //   currentState = STATE_DISCONNECT;
+ // }
+}

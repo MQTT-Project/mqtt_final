@@ -1,0 +1,11 @@
+void setup() {
+  // ...
+}
+
+void loop() {
+  // ...
+  if (/* Bedingung für den Reset */) {
+    ESP.reset();  // Software-Reset auslösen
+  }
+  // ...
+}
